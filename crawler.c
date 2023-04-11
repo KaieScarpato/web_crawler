@@ -29,8 +29,8 @@ void find_urls(TidyDoc doc, TidyNode tnod, queue *q){
     		// get href children
     		TidyAttr hrefAttr = tidyAttrGetById(child, TidyAttr_HREF);
     		if (hrefAttr && strlen(tidyAttrValue(hrefAttr)) < MAX_URL_LENGTH) {
-        		char *str = (char *) malloc(513 * sizeof(char));
-      			strncpy(str, (char *)(tidyAttrValue(hrefAttr)), 512);
+        		char *str = (char *) calloc(MAX_URL_LENGTH + 1, sizeof(char));
+      			strncpy(str, (char *)(tidyAttrValue(hrefAttr)), MAX_URL_LENGTH);
       			// final check
     			if(str[0] == 'h' && str[1] == 't' && str[2] == 't' && str[3] == 'p' && str[4] == 's'){
     				enqueue(str, q);	
@@ -88,6 +88,7 @@ int process_url(char *url, Crawl *c, queue *q){
     	tidyBufFree(&docbuf);
     	tidyRelease(tdoc);
 	
+	// update crawl data structures and return success
 	c->urls[c->num] = url;
 	c->num++;
 	return 0;
@@ -103,40 +104,55 @@ Crawl *init_crawl(char *searchTerm){
 	c->urls = (char **)calloc(10, sizeof(char *));	
 	
 	c->num = 0;
-	c->status = 0;
+	c->status = 10;
 	return c;
 }
 
 // writes data from crawl to terminal
 void write_to_terminal(Crawl *c){
+	if(c->status == 10){
+		printf("Crawl either in progress or not started...\n");
+		return;
+	}
+	
 	printf("Search Term  : %s\n", c->searchTerm);
+	
+	// check for errors
 	if(c->status == -2){
 		printf("Curl Error   : %s\n", c->curlErr);
 	}
 	else if(c->status == -1){
 		printf("Tidy Buffer Error\n");
 	}
+	// print data
 	else{
 		printf("URL's(MAX 10): \n");
 		for(int i = 0; i < c->num; i++){
 			printf("%-2d           : %s\n", i + 1, c->urls[i]);
 		}
 	}
-		
+	
+	// free data
 	free(c->searchTerm);
 	free(c->urls);
 }
 
 // loop for web crawl
 int loop(Crawl *c){
+	// initialize queue for handling urls
 	queue *q = (queue *)malloc(sizeof(queue));
     	initQueue(q);
 	enqueue(c->searchTerm, q);
+	
+	// initalize status flag
 	int flag;
+	
+	// feedback loop, keep scanning webpages while we can find urls and we haven't exceeded the max number of urls
 	while(c->num < MAX && isEmpty(q) != 1){
 		flag = process_url(dequeue(q), c, q);
 	}
 	
+	// free queue and return flag
 	free(q);
 	return flag;
 }
@@ -182,14 +198,14 @@ void main(void){
 	// print data
 	for(int i = 0; i < num; i++){
 		write_to_terminal(cArr[i]);
-		free(cArr[i]);
 		printf("\n");
 	}
 
 	// free crawls and stuff
 	for(int i = 0; i < num; i++){
 		free(strArr[i]);
+		free(cArr[i]);
 	}
 	free(strArr);
+	free(cArr);
 }
-
