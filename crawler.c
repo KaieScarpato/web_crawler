@@ -88,6 +88,7 @@ int process_url(char *url, Crawl *c, queue *q){
     	tidyBufFree(&docbuf);
     	tidyRelease(tdoc);
 	
+	
 	// update crawl data structures and return success
 	c->urls[c->num] = url;
 	c->num++;
@@ -99,7 +100,7 @@ Crawl *init_crawl(char *searchTerm){
 	Crawl *c = (Crawl *)malloc(sizeof(Crawl *));
 	
 	c->searchTerm = (char*) malloc(513 * sizeof(char));
-	strncpy(c->searchTerm, searchTerm, 513);
+	strncpy(c->searchTerm, searchTerm, 512);
 	
 	c->urls = (char **)calloc(10, sizeof(char *));	
 	
@@ -131,10 +132,15 @@ void write_to_terminal(Crawl *c){
 			printf("%-2d           : %s\n", i + 1, c->urls[i]);
 		}
 	}
-	
-	// free data
-	free(c->searchTerm);
+}
+
+// free data
+void free_crawl(Crawl *c){
+	for(int i = 0; i < c->num; i++){
+		free(c->urls[i]);
+	}
 	free(c->urls);
+	free(c);
 }
 
 // loop for web crawl
@@ -153,6 +159,9 @@ int loop(Crawl *c){
 	}
 	
 	// free queue and return flag
+	while(isEmpty(q) != 1){
+		free(dequeue(q));
+	}
 	free(q);
 	return flag;
 }
@@ -204,7 +213,7 @@ void main(void){
 	// free crawls and stuff
 	for(int i = 0; i < num; i++){
 		free(strArr[i]);
-		free(cArr[i]);
+		free_crawl(cArr[i]);
 	}
 	free(strArr);
 	free(cArr);
